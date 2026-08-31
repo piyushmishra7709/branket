@@ -6,8 +6,7 @@
 <title>Branket Solutions — Digital Solutions Built for Growth</title>
   <link rel="icon" type="image/png" href="favicon.png">
 <meta name="description" content="Branket Solutions is a remote IT and digital solutions company offering website development, SEO, social media marketing, brand building and custom projects.">
-<link rel="icon" type="image/png" href="/favicon.png">
-  <link id="favicon" rel="icon" type="image/png" href="favicon1.png">
+<link id="favicon" rel="icon" type="image/png" href="favicon.png">
 <link rel="stylesheet" href="/style.css">
 <meta name="keywords" content="Branket Solutions, website development company, SEO services India, social media marketing agency, brand building, graphic design agency, custom software development, digital marketing agency India, remote IT company">
 <link rel="canonical" href="https://branketsolutions.website/">
@@ -512,8 +511,11 @@
   let currentIcon = 0;
 
   setInterval(function () {
+
     currentIcon = (currentIcon + 1) % icons.length;
-    favicon.href = icons[currentIcon];
+
+    favicon.href = icons[currentIcon] + "?v=" + new Date().getTime();
+
   }, 700);
 </script>
 </body>
