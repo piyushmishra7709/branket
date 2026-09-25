@@ -89,6 +89,19 @@
     background-size: 84px 84px;
   }
 
+  /* ---------- decorative sunflowers ---------- */
+  .sunflower{
+    position:fixed;
+    z-index:0;
+    pointer-events:none;
+    opacity:.4;
+    transform-origin:center;
+  }
+  .sunflower.tl{ top:-54px; left:-58px; width:230px; height:230px; animation: swayLeft 9s ease-in-out infinite; }
+  .sunflower.br{ bottom:-64px; right:-60px; width:280px; height:280px; animation: swayRight 11s ease-in-out infinite; }
+  @keyframes swayLeft{ 0%,100%{ transform:rotate(-14deg); } 50%{ transform:rotate(-9deg); } }
+  @keyframes swayRight{ 0%,100%{ transform:rotate(16deg); } 50%{ transform:rotate(21deg); } }
+
   .layout{
     position:relative;
     z-index:1;
@@ -641,7 +654,7 @@
   .turn-banner b{ color:var(--ink); }
 
   /* ---------- board ---------- */
-  .board-wrap{ position:relative; }
+  .board-wrap{ position:relative; width:min(100%, 62dvh, 380px); margin:0 auto; }
   .board{
     display:grid;
     grid-template-columns:repeat(3, 1fr);
@@ -936,7 +949,7 @@
     .mesh, .brand-mark, .card::before, .pulse-dot, .ring-loader, .cell.just-placed,
     .draw-in path, .draw-in circle, .result, .result-emoji, .player-chip.turn .avatar-ring,
     .stat-num.bump, .cell.win-cell, .chat-bubble, .chat-drawer, .chat-backdrop, .sparkle,
-    .flying-emoji, .btn::after{ animation:none !important; }
+    .flying-emoji, .btn::after, .sunflower{ animation:none !important; }
   }
 
   a:focus-visible, button:focus-visible, input:focus-visible{
@@ -949,6 +962,37 @@
 
 <div class="mesh"></div>
 <div class="bloom-pattern"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <radialGradient id="petalGrad" cx="50%" cy="20%" r="80%">
+      <stop offset="0%" stop-color="#FFEBB0"/>
+      <stop offset="100%" stop-color="#FFC857"/>
+    </radialGradient>
+    <radialGradient id="centerGrad" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#C79657"/>
+      <stop offset="100%" stop-color="#7A5230"/>
+    </radialGradient>
+    <g id="sunflowerShape">
+      <g fill="url(#petalGrad)" stroke="#F2A93B" stroke-width="1" stroke-opacity=".5">
+        <ellipse cx="100" cy="42" rx="17" ry="40" transform="rotate(0 100 100)"/>
+        <ellipse cx="100" cy="42" rx="17" ry="40" transform="rotate(36 100 100)"/>
+        <ellipse cx="100" cy="42" rx="17" ry="40" transform="rotate(72 100 100)"/>
+        <ellipse cx="100" cy="42" rx="17" ry="40" transform="rotate(108 100 100)"/>
+        <ellipse cx="100" cy="42" rx="17" ry="40" transform="rotate(144 100 100)"/>
+        <ellipse cx="100" cy="42" rx="17" ry="40" transform="rotate(180 100 100)"/>
+        <ellipse cx="100" cy="42" rx="17" ry="40" transform="rotate(216 100 100)"/>
+        <ellipse cx="100" cy="42" rx="17" ry="40" transform="rotate(252 100 100)"/>
+        <ellipse cx="100" cy="42" rx="17" ry="40" transform="rotate(288 100 100)"/>
+        <ellipse cx="100" cy="42" rx="17" ry="40" transform="rotate(324 100 100)"/>
+      </g>
+      <circle cx="100" cy="100" r="32" fill="url(#centerGrad)"/>
+      <circle cx="100" cy="100" r="32" fill="none" stroke="#5E3B1E" stroke-opacity=".25" stroke-width="1"/>
+    </g>
+  </defs>
+</svg>
+<svg class="sunflower tl" viewBox="0 0 200 200" aria-hidden="true"><use href="#sunflowerShape"></use></svg>
+<svg class="sunflower br" viewBox="0 0 200 200" aria-hidden="true"><use href="#sunflowerShape"></use></svg>
 
 <div class="layout" id="layout">
 <div class="shell">
@@ -971,7 +1015,7 @@
       <p class="step-sub">Enter your name, then send the link that shows up to whoever you want to play.</p>
       <label class="field-label" for="input-name-1">Player 1 name</label>
       <div class="input-wrap">
-        <input type="text" id="input-name-1" placeholder="e.g. Riya" maxlength="16" autocomplete="off" />
+        <input type="text" id="input-name-1" placeholder="e.g. Piyush" maxlength="16" autocomplete="off" />
       </div>
       <div class="helper-error" id="error-start"></div>
       <div class="row-gap">
@@ -1019,7 +1063,7 @@
       <p class="step-sub" id="join-sub">Someone invited you to play. Enter your name to jump in.</p>
       <label class="field-label" for="input-name-2">Player 2 name</label>
       <div class="input-wrap">
-        <input type="text" id="input-name-2" placeholder="e.g. Karan" maxlength="16" autocomplete="off" />
+        <input type="text" id="input-name-2" placeholder="e.g. Priya" maxlength="16" autocomplete="off" />
       </div>
       <div class="helper-error" id="error-join"></div>
       <button class="btn btn-teal" id="btn-join">Join game</button>
@@ -1230,7 +1274,8 @@ const WIN_LINES = [
   [0,3,6],[1,4,7],[2,5,8],
   [0,4,8],[2,4,6]
 ];
-const CELL_POS = {0:[0,0],1:[1,0],2:[2,0],3:[0,1],4:[1,1],5:[2,1],6:[0,2],7:[1,2],8:[2,2]};
+// Maps board index -> [row, col] to match the row-major grid layout exactly.
+const CELL_POS = {0:[0,0],1:[0,1],2:[0,2],3:[1,0],4:[1,1],5:[1,2],6:[2,0],7:[2,1],8:[2,2]};
 
 function checkResult(board){
   for (const line of WIN_LINES){
