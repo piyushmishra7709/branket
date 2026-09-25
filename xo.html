@@ -1,0 +1,1939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>XO — Play with a friend</title>
+<meta name="description" content="A cozy, pretty tic-tac-toe game you can play live with a friend, on any device, with live chat and reactions." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💖</text></svg>" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Poppins:ital,wght@0,400;0,500;0,600;1,500&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --cream:        #FFF6FA;
+    --card:         rgba(255,255,255,0.90);
+    --ink:          #3A2340;
+    --ink-soft:     #8A7793;
+    --coral:        #FF4FA0;   /* X — hot pink */
+    --coral-2:      #FF8AC4;
+    --coral-soft:   #FFE1F0;
+    --teal:         #9B6BFF;   /* O — lavender */
+    --teal-2:       #C3A6FF;
+    --teal-soft:    #F0E9FF;
+    --gold:         #FFC857;   /* accent / draws */
+    --gold-2:       #FFDB94;
+    --gold-soft:    #FFF1D2;
+    --violet:       #D6479C;   /* chat accent — berry */
+    --violet-2:     #FF6FB0;
+    --line:         #F4E4EF;
+    --shadow-card:  0 30px 70px -22px rgba(120, 34, 90, 0.34);
+    --shadow-soft:  0 10px 24px -12px rgba(87, 34, 78, 0.20);
+    --radius-xl:    30px;
+    --radius-lg:    20px;
+    --radius-md:    14px;
+    --font-display: 'Baloo 2', sans-serif;
+    --font-body:    'Poppins', sans-serif;
+  }
+
+  *{ box-sizing:border-box; }
+  html{ height:100%; overflow-x:hidden; }
+  body{
+    margin:0;
+    min-height:100dvh;
+    font-family:var(--font-body);
+    color:var(--ink);
+    background: var(--cream);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    overflow-x:hidden;
+    position:relative;
+  }
+
+  /* ---------- animated mesh background ---------- */
+  .mesh{
+    position:fixed; inset:-10%;
+    z-index:0;
+    background:
+      radial-gradient(38% 32% at 14% 10%, #FFD3EA 0%, rgba(255,211,234,0) 70%),
+      radial-gradient(34% 30% at 88% 16%, #E3D4FF 0%, rgba(227,212,255,0) 70%),
+      radial-gradient(40% 34% at 84% 92%, #FFE9C2 0%, rgba(255,233,194,0) 70%),
+      radial-gradient(36% 30% at 8% 90%, #FFC9E3 0%, rgba(255,201,227,0) 70%);
+    animation: meshShift 24s ease-in-out infinite alternate;
+    pointer-events:none;
+  }
+  @keyframes meshShift{
+    0%{ transform:translate(0,0) scale(1); }
+    100%{ transform:translate(-2%, 2%) scale(1.06); }
+  }
+
+  /* ---------- decorative bloom pattern (adds texture/richness) ---------- */
+  .bloom-pattern{
+    position:fixed; inset:0;
+    z-index:0;
+    pointer-events:none;
+    opacity:.65;
+    background-image:
+      radial-gradient(circle at 12px 14px, rgba(255,79,160,.13) 5px, transparent 6px),
+      radial-gradient(circle at 30px 8px,  rgba(155,107,255,.13) 5px, transparent 6px),
+      radial-gradient(circle at 22px 26px, rgba(255,200,87,.16) 4.5px, transparent 5.5px),
+      radial-gradient(circle at 4px 30px,  rgba(255,79,160,.10) 4px, transparent 5px),
+      radial-gradient(circle at 40px 34px, rgba(155,107,255,.10) 4px, transparent 5px),
+      radial-gradient(circle at 64px 10px, rgba(255,200,87,.10) 4px, transparent 5px),
+      radial-gradient(circle at 70px 40px, rgba(255,79,160,.09) 4.5px, transparent 5.5px),
+      radial-gradient(circle at 50px 55px, rgba(155,107,255,.09) 4px, transparent 5px);
+    background-size: 84px 84px;
+  }
+
+  .layout{
+    position:relative;
+    z-index:1;
+    width:100%;
+    max-width:420px;
+    display:flex;
+    justify-content:center;
+  }
+
+  .shell{
+    position:relative;
+    width:100%;
+    max-width:420px;
+    display:flex;
+    perspective:1200px;
+  }
+
+  .card{
+    position:relative;
+    background:var(--card);
+    backdrop-filter: blur(18px) saturate(150%);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    border:1px solid rgba(255,255,255,0.7);
+    border-radius:var(--radius-xl);
+    box-shadow:var(--shadow-card), 0 2px 0 rgba(255,255,255,.6) inset;
+    padding:22px 22px 20px;
+    overflow-x:hidden;
+    width:100%;
+    transform-style:preserve-3d;
+    transform:rotateX(var(--tiltX,0deg)) rotateY(var(--tiltY,0deg));
+    transition:transform .28s cubic-bezier(.2,.8,.3,1), box-shadow .28s ease;
+    animation: cardIn .5s cubic-bezier(.2,.8,.3,1);
+  }
+  @keyframes cardIn{ from{ opacity:0; transform:translateY(14px) scale(.98); } to{ opacity:1; transform:none; } }
+
+  /* glossy light sheen that follows the pointer for a tactile 3D feel */
+  .card-sheen{
+    position:absolute; inset:0;
+    border-radius:var(--radius-xl);
+    pointer-events:none;
+    z-index:4;
+    background:radial-gradient(480px 320px at var(--sheen-x,30%) var(--sheen-y,20%), rgba(255,255,255,.55), rgba(255,255,255,0) 60%);
+    opacity:var(--sheen-op,0);
+    transition:opacity .3s ease;
+    mix-blend-mode:soft-light;
+  }
+
+  .card::before{
+    content:"";
+    position:sticky;
+    top:0;
+    display:block;
+    margin:-22px -22px 16px;
+    height:6px;
+    background:linear-gradient(90deg, var(--coral), var(--gold), var(--teal), var(--violet));
+    background-size:200% 100%;
+    animation: rainbowSlide 6s linear infinite;
+    z-index:3;
+    box-shadow:0 1px 4px rgba(0,0,0,.15);
+  }
+  @keyframes rainbowSlide{ 0%{ background-position:0% 0; } 100%{ background-position:200% 0; } }
+
+  .fade-screen{ animation: screenIn .38s cubic-bezier(.2,.8,.3,1); }
+  @keyframes screenIn{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
+
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:11px;
+    margin-bottom:18px;
+  }
+  .brand-mark{
+    width:42px; height:42px;
+    border-radius:14px;
+    background:linear-gradient(135deg, var(--coral) 0%, var(--violet-2) 100%);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: var(--shadow-soft);
+    flex:none;
+    animation: markWobble 5s ease-in-out infinite;
+  }
+  @keyframes markWobble{ 0%,100%{ transform:rotate(0deg); } 50%{ transform:rotate(-6deg); } }
+  .brand-mark svg{ width:23px; height:23px; }
+  .brand-text h1{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:1.55rem;
+    margin:0;
+    line-height:1;
+    letter-spacing:.2px;
+    background:linear-gradient(90deg, var(--coral), var(--violet) 55%, var(--teal));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .brand-text h1 .sparkle{ -webkit-text-fill-color:initial; background:none; display:inline-block; animation:sparkleTwinkle 2.4s ease-in-out infinite; }
+  @keyframes sparkleTwinkle{ 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:.5; transform:scale(.85); } }
+  .brand-text p{
+    margin:3px 0 0;
+    font-size:.8rem;
+    color:var(--ink-soft);
+  }
+
+  h2.step-title{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:1.2rem;
+    margin:0 0 4px;
+  }
+  .step-sub{
+    color:var(--ink-soft);
+    font-size:.86rem;
+    margin:0 0 18px;
+    line-height:1.45;
+  }
+
+  label.field-label{
+    display:block;
+    font-size:.76rem;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin:0 0 6px 2px;
+  }
+  .input-wrap{ position:relative; margin-bottom:14px; }
+  input[type="text"]{
+    width:100%;
+    font-family:var(--font-body);
+    font-size:1rem;
+    padding:13px 16px;
+    border-radius:var(--radius-md);
+    border:1.5px solid var(--line);
+    background:#FFFDFC;
+    color:var(--ink);
+    outline:none;
+    transition:border-color .18s ease, box-shadow .18s ease;
+  }
+  input[type="text"]::placeholder{ color:#D6C4D4; }
+  input[type="text"]:focus{
+    border-color:var(--coral);
+    box-shadow:0 0 0 4px var(--coral-soft);
+  }
+
+  .btn{
+    appearance:none;
+    border:none;
+    cursor:pointer;
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:.94rem;
+    border-radius:999px;
+    padding:13px 20px;
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    transition:transform .12s ease, box-shadow .18s ease, opacity .12s ease;
+    position:relative;
+    overflow:hidden;
+  }
+  .btn::after{
+    content:"";
+    position:absolute;
+    top:0; left:-60%;
+    width:50%; height:100%;
+    background:linear-gradient(120deg, transparent, rgba(255,255,255,.45), transparent);
+    transform:skewX(-20deg);
+    transition:left .5s ease;
+  }
+  .btn:hover::after{ left:130%; }
+  .btn:active{ transform:scale(.98); }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .btn-primary{
+    background:linear-gradient(135deg, var(--coral), var(--coral-2));
+    color:#fff;
+    box-shadow:0 14px 26px -12px rgba(255,79,160,.55);
+  }
+  .btn-primary:hover:not(:disabled){ box-shadow:0 18px 32px -10px rgba(255,79,160,.68); transform:translateY(-1px); }
+  .btn-teal{
+    background:linear-gradient(135deg, var(--teal), var(--teal-2));
+    color:#fff;
+    box-shadow:0 14px 26px -12px rgba(155,107,255,.5);
+  }
+  .btn-teal:hover:not(:disabled){ box-shadow:0 18px 32px -10px rgba(155,107,255,.62); transform:translateY(-1px); }
+  .btn-ghost{
+    background:var(--cream);
+    color:var(--ink);
+    border:1.5px solid var(--line);
+    box-shadow:none;
+  }
+  .btn-ghost:hover{ background:#FBEAF3; }
+  .btn-link{
+    background:transparent;
+    box-shadow:none;
+    color:var(--ink-soft);
+    text-decoration:underline;
+    width:auto;
+    padding:6px;
+    font-size:.84rem;
+  }
+
+  .row-gap{ display:flex; flex-direction:column; gap:10px; }
+
+  .helper-error{
+    color:#D14343;
+    font-size:.82rem;
+    margin:-6px 0 12px 2px;
+    min-height:0;
+  }
+
+  /* ---------- waiting screen ---------- */
+  .ring-loader{
+    width:50px; height:50px;
+    margin:18px auto 4px;
+    border-radius:50%;
+    border:5px solid var(--coral-soft);
+    border-top-color:var(--coral);
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .pulse-dot-row{ display:flex; align-items:center; justify-content:center; gap:8px; margin:12px 0 16px; }
+  .pulse-dot{
+    width:9px;height:9px;border-radius:50%;
+    background:var(--coral);
+    animation:pulseDot 1.2s ease-in-out infinite;
+  }
+  .pulse-dot:nth-child(2){ background:var(--gold); animation-delay:.15s; }
+  .pulse-dot:nth-child(3){ background:var(--teal); animation-delay:.3s; }
+  @keyframes pulseDot{
+    0%,80%,100%{ transform:scale(.6); opacity:.4; }
+    40%{ transform:scale(1); opacity:1; }
+  }
+
+  .link-box{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--cream);
+    border:1.5px dashed var(--line);
+    border-radius:var(--radius-md);
+    padding:10px 10px 10px 16px;
+    margin-bottom:12px;
+  }
+  .link-box span{
+    flex:1;
+    font-size:.8rem;
+    color:var(--ink-soft);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .icon-btn{
+    flex:none;
+    width:38px; height:38px;
+    border-radius:12px;
+    border:none;
+    background:var(--ink);
+    color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition:transform .12s ease, background .15s ease;
+  }
+  .icon-btn:hover{ background:var(--coral); }
+  .icon-btn:active{ transform:scale(.92); }
+  .icon-btn svg{ width:17px; height:17px; }
+
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:26px;
+    transform:translate(-50%, 20px);
+    background:var(--ink);
+    color:#fff;
+    font-size:.85rem;
+    padding:10px 18px;
+    border-radius:999px;
+    opacity:0;
+    transition:opacity .25s ease, transform .25s ease;
+    z-index:80;
+    pointer-events:none;
+  }
+  .toast.show{ opacity:1; transform:translate(-50%, 0); }
+
+  .center-note{
+    text-align:center;
+    padding:26px 6px 8px;
+    color:var(--ink-soft);
+    font-size:.92rem;
+    line-height:1.6;
+  }
+  .center-note .big-emoji{ font-size:2.1rem; display:block; margin-bottom:10px; }
+
+  /* ---------- game top bar ---------- */
+  .game-topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin:0 -6px 16px;
+    padding:8px 6px;
+    position:sticky;
+    top:6px;
+    z-index:6;
+    background:rgba(255,253,252,.94);
+    backdrop-filter:blur(10px);
+    border-radius:16px;
+  }
+  .topbar-btn{
+    flex:none;
+    display:flex; align-items:center; gap:6px;
+    border:none;
+    background:var(--cream);
+    color:var(--ink);
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:.78rem;
+    padding:8px 12px;
+    border-radius:999px;
+    cursor:pointer;
+    transition:background .15s ease, transform .12s ease;
+  }
+  .topbar-btn:hover{ background:#FBEAF3; }
+  .topbar-btn:active{ transform:scale(.95); }
+  .room-pill{
+    flex:1;
+    text-align:center;
+    font-size:.72rem;
+    color:var(--ink-soft);
+    font-weight:600;
+    letter-spacing:.3px;
+  }
+  .room-pill b{ color:var(--ink); font-family:var(--font-display); letter-spacing:1px; }
+  .chat-trigger{
+    position:relative;
+    background:linear-gradient(135deg, var(--violet), var(--violet-2));
+    color:#fff;
+  }
+  .chat-trigger:hover{ background:linear-gradient(135deg, var(--violet), var(--violet-2)); opacity:.92; }
+  .chat-badge{
+    position:absolute;
+    top:-4px; right:-4px;
+    background:var(--coral);
+    color:#fff;
+    font-size:.6rem;
+    font-weight:700;
+    min-width:16px; height:16px;
+    border-radius:999px;
+    display:flex; align-items:center; justify-content:center;
+    padding:0 3px;
+    border:2px solid var(--cream);
+  }
+
+  /* ---------- scoreboard chips ---------- */
+  .scoreboard{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:12px;
+  }
+  .player-chip{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+    padding:10px 6px 8px;
+    border-radius:var(--radius-lg);
+    background:var(--cream);
+    border:2px solid transparent;
+    transition:border-color .25s ease, background .25s ease, transform .25s ease;
+    min-width:0;
+    position:relative;
+  }
+  .player-chip.turn{
+    border-color:var(--active-color, var(--coral));
+    background:var(--active-bg, var(--coral-soft));
+    transform:translateY(-2px);
+  }
+  .player-chip.turn.my-turn::after{
+    content:"YOUR TURN";
+    position:absolute;
+    top:-10px;
+    left:50%;
+    transform:translateX(-50%);
+    background:var(--active-color, var(--coral));
+    color:#fff;
+    font-size:.56rem;
+    font-weight:700;
+    letter-spacing:.3px;
+    padding:3px 8px;
+    border-radius:999px;
+    box-shadow:0 4px 10px -3px rgba(0,0,0,.3);
+    animation: badgeBounce .5s ease;
+    white-space:nowrap;
+  }
+  @keyframes badgeBounce{ 0%{ transform:translateX(-50%) scale(.6); opacity:0; } 60%{ transform:translateX(-50%) scale(1.12); opacity:1; } 100%{ transform:translateX(-50%) scale(1); } }
+
+  .avatar-ring{
+    width:44px; height:44px;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+    flex:none;
+  }
+  .player-chip.turn .avatar-ring{ animation: ringPulse 1.6s ease-in-out infinite; }
+  @keyframes ringPulse{
+    0%,100%{ box-shadow:0 0 0 0 var(--glow-color, rgba(255,79,160,.55)); }
+    50%{ box-shadow:0 0 0 8px rgba(255,79,160,0); }
+  }
+  .avatar{
+    width:38px; height:38px;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:1rem;
+    color:#fff;
+    flex:none;
+    position:relative;
+    box-shadow:0 3px 6px -2px rgba(0,0,0,.3), inset 0 -3px 5px rgba(0,0,0,.18), inset 0 2px 3px rgba(255,255,255,.5);
+  }
+  .avatar::after{
+    content:"";
+    position:absolute;
+    top:3px; left:6px;
+    width:38%; height:30%;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,.85), rgba(255,255,255,0) 70%);
+  }
+  .avatar.x{ background:linear-gradient(135deg, var(--coral), var(--coral-2)); }
+  .avatar.o{ background:linear-gradient(135deg, var(--teal), var(--teal-2)); }
+  .player-name{
+    font-size:.8rem;
+    font-weight:600;
+    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .vs-mid{
+    flex:none;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+    padding:0 2px;
+  }
+  .vs-mid .vs-text{
+    font-family:var(--font-display);
+    font-size:.76rem;
+    color:#E4C9DD;
+    font-weight:700;
+  }
+
+  /* ---------- scorecard strip ---------- */
+  .scorecard{
+    display:flex;
+    align-items:stretch;
+    background:linear-gradient(135deg, #FFFDFC, var(--cream));
+    border:1.5px solid var(--line);
+    border-radius:var(--radius-lg);
+    padding:10px 6px;
+    margin-bottom:14px;
+    position:relative;
+    overflow:hidden;
+  }
+  .scorecard::before{
+    content:"";
+    position:absolute;
+    left:0; top:0; bottom:0;
+    width:var(--x-share, 50%);
+    background:linear-gradient(90deg, var(--coral-soft), transparent);
+    transition:width .6s cubic-bezier(.2,.8,.3,1);
+    z-index:0;
+  }
+  .stat-pill{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:1px;
+    position:relative;
+    z-index:1;
+  }
+  .stat-pill + .stat-pill{ border-left:1.5px dashed var(--line); }
+  .stat-icon{ font-size:.95rem; line-height:1; }
+  .stat-num{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:1.3rem;
+    color:var(--ink);
+    transition:transform .18s ease;
+  }
+  .stat-num.bump{ animation: statBump .35s ease; }
+  @keyframes statBump{ 0%{ transform:scale(1); } 45%{ transform:scale(1.35); } 100%{ transform:scale(1); } }
+  .stat-label{ font-size:.64rem; color:var(--ink-soft); font-weight:600; }
+
+  /* ---------- quick reactions ---------- */
+  .reaction-row{
+    display:flex;
+    gap:6px;
+    margin-bottom:12px;
+    overflow-x:auto;
+    scrollbar-width:none;
+    padding-bottom:1px;
+  }
+  .reaction-row::-webkit-scrollbar{ display:none; }
+  .reaction-chip{
+    flex:none;
+    width:34px; height:34px;
+    border-radius:50%;
+    border:none;
+    background:linear-gradient(135deg, var(--coral-soft), var(--teal-soft));
+    font-size:1rem;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition:transform .12s ease;
+  }
+  .reaction-chip:hover{ transform:scale(1.15) rotate(-6deg); }
+  .reaction-chip:active{ transform:scale(.85); }
+
+  #reaction-layer{
+    position:fixed; inset:0;
+    pointer-events:none;
+    z-index:95;
+    overflow:hidden;
+  }
+  .flying-emoji{
+    position:absolute;
+    bottom:18%;
+    font-size:2.4rem;
+    opacity:0;
+    animation: flyUp 1.6s ease-out forwards;
+    filter:drop-shadow(0 6px 10px rgba(0,0,0,.2));
+  }
+  @keyframes flyUp{
+    0%{ opacity:0; transform:translate(0,0) scale(.4) rotate(-10deg); }
+    12%{ opacity:1; transform:translate(0,-10px) scale(1.25) rotate(6deg); }
+    30%{ transform:translate(var(--drift,10px),-30vh) scale(1.05) rotate(-6deg); }
+    100%{ opacity:0; transform:translate(calc(var(--drift,10px) * 2),-62vh) scale(.9) rotate(4deg); }
+  }
+
+  .turn-banner{
+    text-align:center;
+    font-size:.84rem;
+    color:var(--ink-soft);
+    margin-bottom:12px;
+    min-height:19px;
+  }
+  .turn-banner b{ color:var(--ink); }
+
+  /* ---------- board ---------- */
+  .board-wrap{ position:relative; }
+  .board{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:clamp(6px, 2vw, 9px);
+    aspect-ratio:1/1;
+    margin-bottom:16px;
+    position:relative;
+    width:100%;
+  }
+  .cell{
+    background:linear-gradient(145deg, #FFFDFC, var(--cream));
+    border-radius:16px;
+    border:none;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    position:relative;
+    box-shadow:
+      inset 2px 2px 5px rgba(255,255,255,.9),
+      inset -3px -3px 7px rgba(140,90,130,.10),
+      0 3px 7px -4px rgba(87,34,78,.18);
+    transition:background .15s ease, transform .12s ease, box-shadow .15s ease;
+  }
+  .cell svg{ width:52%; height:52%; overflow:visible; }
+  .cell.playable:hover{
+    background:linear-gradient(145deg, #fff, #FBEAF3);
+    transform:translateY(-3px) scale(1.03);
+    box-shadow:
+      inset 2px 2px 5px rgba(255,255,255,.9),
+      inset -3px -3px 7px rgba(140,90,130,.08),
+      0 12px 20px -10px rgba(87,34,78,.32);
+  }
+  .cell.playable:active{
+    transform:scale(.95) translateY(1px);
+    box-shadow:
+      inset 3px 3px 8px rgba(140,90,130,.22),
+      inset -2px -2px 5px rgba(255,255,255,.6);
+  }
+  .cell:disabled{ cursor:default; }
+  .cell.win-cell{
+    background:linear-gradient(145deg, #FFF8E4, var(--gold-soft));
+    animation: winCellPop .5s ease;
+    box-shadow:
+      inset 2px 2px 5px rgba(255,255,255,.9),
+      inset -2px -2px 6px rgba(200,150,40,.15),
+      0 6px 14px -6px rgba(255,200,87,.5);
+  }
+  @keyframes winCellPop{ 0%{ transform:scale(1); } 40%{ transform:scale(1.1) translateY(-2px); } 100%{ transform:scale(1); } }
+
+  .win-line-svg{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .15s ease;
+    z-index:2;
+  }
+  .win-line-svg.show{ opacity:1; }
+  #win-line{
+    stroke-linecap:round;
+    fill:none;
+    stroke-width:.1;
+    stroke-dasharray:4.3;
+    stroke-dashoffset:4.3;
+    transition:stroke-dashoffset .55s cubic-bezier(.2,.8,.3,1);
+    filter:drop-shadow(0 3px 5px rgba(0,0,0,.22));
+  }
+
+  .cell path, .cell circle.o-mark{
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    fill:none;
+  }
+  .mark-x path{ stroke:var(--coral); stroke-width:9; filter:drop-shadow(0 3px 3px rgba(255,79,160,.35)); }
+  .mark-o circle{ stroke:var(--teal); stroke-width:9; filter:drop-shadow(0 3px 3px rgba(155,107,255,.35)); }
+
+  .draw-in path{
+    stroke-dasharray:140;
+    stroke-dashoffset:140;
+    animation:drawLine .28s ease forwards;
+  }
+  .draw-in path.line2{ animation-delay:.12s; }
+  .draw-in circle{
+    stroke-dasharray:220;
+    stroke-dashoffset:220;
+    animation:drawLine .38s ease forwards;
+    transform-origin:center;
+    transform:rotate(-90deg);
+  }
+  @keyframes drawLine{ to{ stroke-dashoffset:0; } }
+
+  @keyframes popIn{
+    0%{ transform:scale(.5); opacity:0; }
+    60%{ transform:scale(1.08); opacity:1; }
+    100%{ transform:scale(1); }
+  }
+  .cell.just-placed{ animation:popIn .22s ease; }
+
+  /* ---------- result banner ---------- */
+  .result{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    background:linear-gradient(135deg, var(--gold-soft), var(--coral-soft));
+    border-radius:var(--radius-lg);
+    padding:13px 15px;
+    margin-bottom:14px;
+    animation:slideUp .32s ease;
+  }
+  @keyframes slideUp{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
+  .result-emoji{ font-size:1.7rem; line-height:1; flex:none; animation: emojiPop .5s ease; }
+  @keyframes emojiPop{ 0%{ transform:scale(0) rotate(-20deg); } 60%{ transform:scale(1.2) rotate(6deg); } 100%{ transform:scale(1) rotate(0); } }
+  .result-text{ font-family:var(--font-display); font-weight:600; font-size:.98rem; flex:1; }
+  .result-text small{ display:block; font-family:var(--font-body); font-weight:400; font-size:.77rem; color:var(--ink-soft); margin-top:2px; }
+
+  .btn-play-again{ margin-bottom:4px; }
+
+  canvas#confetti-layer{
+    position:fixed; inset:0; pointer-events:none; z-index:90;
+  }
+
+  .hidden{ display:none !important; }
+
+  /* ---------- chat ---------- */
+  .chat-backdrop{
+    position:fixed; inset:0;
+    background:rgba(58,35,64,.38);
+    z-index:65;
+    animation: fadeInBg .2s ease;
+  }
+  @keyframes fadeInBg{ from{ opacity:0; } to{ opacity:1; } }
+
+  /* Mobile default: slides in from the RIGHT edge as a proper side panel (not a bottom sheet) */
+  .chat-drawer{
+    position:fixed;
+    top:0; right:0; bottom:0;
+    width:min(90vw, 380px);
+    max-width:380px;
+    background:#FFFDFC;
+    border-radius:26px 0 0 26px;
+    box-shadow:-24px 0 60px -20px rgba(87,34,78,.42);
+    z-index:70;
+    display:flex;
+    flex-direction:column;
+    transform:translateX(106%);
+    transition:transform .34s cubic-bezier(.2,.8,.3,1);
+    padding-top:max(14px, env(safe-area-inset-top));
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .chat-drawer.open{ transform:translateX(0); }
+
+  .chat-drawer-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px 10px;
+    border-bottom:1.5px solid var(--line);
+    flex:none;
+  }
+  .chat-drawer-header span{ font-family:var(--font-display); font-weight:700; font-size:1.02rem; }
+  .chat-drawer-header button{
+    background:var(--cream); border:none; width:30px; height:30px; border-radius:50%;
+    cursor:pointer; font-size:.9rem; color:var(--ink-soft);
+  }
+
+  /* Laptop / desktop: chat becomes a real side-by-side panel next to the board, not an overlay */
+  @media (min-width: 900px){
+    .layout{ max-width:800px; align-items:flex-start; gap:20px; }
+    .chat-drawer{
+      position:relative;
+      top:auto; right:auto; bottom:auto;
+      width:340px;
+      max-width:340px;
+      max-height:calc(100dvh - 20px);
+      border-radius:30px;
+      box-shadow:var(--shadow-card);
+      transform:none;
+      display:none;
+      padding-top:0;
+      flex:none;
+    }
+    .chat-drawer.open{ display:flex; }
+    #chat-backdrop{ display:none !important; }
+  }
+
+  .chat-messages{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    padding:12px 14px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .chat-empty{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:.84rem;
+    margin-top:18px;
+  }
+  .chat-row{ display:flex; }
+  .chat-row.mine{ justify-content:flex-end; }
+  .chat-bubble{
+    max-width:78%;
+    padding:9px 13px;
+    border-radius:16px;
+    font-size:.86rem;
+    line-height:1.4;
+    animation: bubbleIn .2s ease;
+    word-wrap:break-word;
+  }
+  @keyframes bubbleIn{ from{ opacity:0; transform:translateY(6px) scale(.97); } to{ opacity:1; transform:none; } }
+  .chat-row.x .chat-bubble{ background:var(--coral-soft); color:#9C1D62; border-bottom-left-radius:4px; }
+  .chat-row.o .chat-bubble{ background:var(--teal-soft); color:#5B3399; border-bottom-left-radius:4px; }
+  .chat-row.mine .chat-bubble{ border-bottom-left-radius:16px; border-bottom-right-radius:4px; }
+  .chat-row.mine.x .chat-bubble{ background:linear-gradient(135deg, var(--coral), var(--coral-2)); color:#fff; }
+  .chat-row.mine.o .chat-bubble{ background:linear-gradient(135deg, var(--teal), var(--teal-2)); color:#fff; }
+  .chat-sender{ font-size:.66rem; font-weight:700; opacity:.75; display:block; margin-bottom:2px; }
+
+  /* single-tap emoji messages render big, WhatsApp-style, with a bouncy pop */
+  .chat-bubble.emoji-msg{
+    background:transparent !important;
+    box-shadow:none !important;
+    font-size:2.1rem;
+    padding:2px 4px;
+    line-height:1;
+    animation: emojiBubblePop .4s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes emojiBubblePop{ 0%{ opacity:0; transform:scale(.3) translateY(8px); } 65%{ opacity:1; transform:scale(1.18); } 100%{ transform:scale(1); } }
+
+  .emoji-hint{
+    flex:none;
+    text-align:center;
+    font-size:.68rem;
+    color:var(--ink-soft);
+    padding:6px 12px 0;
+  }
+  .emoji-row{
+    flex:none;
+    display:flex;
+    gap:6px;
+    padding:8px 12px;
+    overflow-x:auto;
+    border-top:1.5px solid var(--line);
+    scrollbar-width:none;
+  }
+  .emoji-row::-webkit-scrollbar{ display:none; }
+  .emoji-chip{
+    flex:none;
+    width:36px; height:36px;
+    border-radius:50%;
+    border:none;
+    background:linear-gradient(135deg, var(--coral-soft), var(--teal-soft));
+    font-size:1.05rem;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition:transform .12s ease;
+  }
+  .emoji-chip:hover{ transform:scale(1.12); }
+  .emoji-chip:active{ transform:scale(.92); }
+  .emoji-chip.pop{ animation: emojiChipPop .38s ease; }
+  @keyframes emojiChipPop{ 0%{ transform:scale(1); } 40%{ transform:scale(1.5) rotate(-10deg); } 100%{ transform:scale(1); } }
+
+  .chat-form{
+    display:flex; gap:8px;
+    padding:10px 12px;
+    border-top:1.5px solid var(--line);
+    flex:none;
+  }
+  .chat-form input{
+    flex:1;
+    border:1.5px solid var(--line);
+    border-radius:999px;
+    padding:10px 15px;
+    font-family:var(--font-body);
+    font-size:.87rem;
+    outline:none;
+    background:#fff;
+  }
+  .chat-form input:focus{ border-color:var(--violet); box-shadow:0 0 0 4px #FBE3F0; }
+  .chat-send{
+    width:40px; height:40px;
+    border-radius:50%;
+    border:none;
+    background:linear-gradient(135deg, var(--violet), var(--violet-2));
+    color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    flex:none;
+    transition:transform .12s ease;
+  }
+  .chat-send:active{ transform:scale(.9); }
+
+  @media (prefers-reduced-motion: reduce){
+    .mesh, .brand-mark, .card::before, .pulse-dot, .ring-loader, .cell.just-placed,
+    .draw-in path, .draw-in circle, .result, .result-emoji, .player-chip.turn .avatar-ring,
+    .stat-num.bump, .cell.win-cell, .chat-bubble, .chat-drawer, .chat-backdrop, .sparkle,
+    .flying-emoji, .btn::after{ animation:none !important; }
+  }
+
+  a:focus-visible, button:focus-visible, input:focus-visible{
+    outline:3px solid var(--gold);
+    outline-offset:2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="mesh"></div>
+<div class="bloom-pattern"></div>
+
+<div class="layout" id="layout">
+<div class="shell">
+  <div class="card" id="tiltCard">
+    <div class="card-sheen" id="cardSheen"></div>
+
+    <div class="brand" id="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>
+      </div>
+      <div class="brand-text">
+        <h1><span class="sparkle">✨</span> XO</h1>
+        <p>Tic-tac-toe, live with a friend</p>
+      </div>
+    </div>
+
+    <!-- START: create a game -->
+    <section id="screen-start" class="fade-screen">
+      <h2 class="step-title">Start a game</h2>
+      <p class="step-sub">Enter your name, then send the link that shows up to whoever you want to play.</p>
+      <label class="field-label" for="input-name-1">Player 1 name</label>
+      <div class="input-wrap">
+        <input type="text" id="input-name-1" placeholder="e.g. Riya" maxlength="16" autocomplete="off" />
+      </div>
+      <div class="helper-error" id="error-start"></div>
+      <div class="row-gap">
+        <button class="btn btn-primary" id="btn-create">Create game &amp; get link</button>
+        <button class="btn btn-link" id="btn-have-code" style="align-self:center;">Have a code instead? Join with it</button>
+      </div>
+    </section>
+
+    <!-- JOIN WITH CODE (manual) -->
+    <section id="screen-code" class="hidden">
+      <h2 class="step-title">Join with a code</h2>
+      <p class="step-sub">Ask the other player for their 6-character game code.</p>
+      <label class="field-label" for="input-code">Game code</label>
+      <div class="input-wrap">
+        <input type="text" id="input-code" placeholder="e.g. K7QX2M" maxlength="6" autocomplete="off" style="text-transform:uppercase;" />
+      </div>
+      <div class="helper-error" id="error-code"></div>
+      <div class="row-gap">
+        <button class="btn btn-teal" id="btn-go-code">Continue</button>
+        <button class="btn btn-link" id="btn-back-start" style="align-self:center;">Back</button>
+      </div>
+    </section>
+
+    <!-- WAITING for opponent -->
+    <section id="screen-waiting" class="hidden">
+      <h2 class="step-title">Share this link</h2>
+      <p class="step-sub">Send it to your friend on any device — as soon as they open it and enter their name, the game starts.</p>
+      <div class="link-box">
+        <span id="waiting-link-text">celectric.co.in/xo</span>
+        <button class="icon-btn" id="btn-copy-link" aria-label="Copy link" title="Copy link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+        </button>
+      </div>
+      <div class="ring-loader"></div>
+      <div class="pulse-dot-row">
+        <div class="pulse-dot"></div><div class="pulse-dot"></div><div class="pulse-dot"></div>
+      </div>
+      <p class="step-sub" style="text-align:center;margin-bottom:4px;" id="waiting-text">Waiting for your friend to join…</p>
+      <button class="btn btn-ghost" id="btn-cancel-wait">Cancel &amp; start over</button>
+    </section>
+
+    <!-- JOIN: enter player 2 name -->
+    <section id="screen-join" class="hidden">
+      <h2 class="step-title">Join the game</h2>
+      <p class="step-sub" id="join-sub">Someone invited you to play. Enter your name to jump in.</p>
+      <label class="field-label" for="input-name-2">Player 2 name</label>
+      <div class="input-wrap">
+        <input type="text" id="input-name-2" placeholder="e.g. Karan" maxlength="16" autocomplete="off" />
+      </div>
+      <div class="helper-error" id="error-join"></div>
+      <button class="btn btn-teal" id="btn-join">Join game</button>
+    </section>
+
+    <!-- fallback / error notes -->
+    <section id="screen-note" class="hidden">
+      <div class="center-note">
+        <span class="big-emoji" id="note-emoji">🙈</span>
+        <span id="note-text">This game link doesn't look right.</span>
+      </div>
+      <button class="btn btn-primary" id="btn-note-restart" style="margin-top:16px;">Start a new game</button>
+    </section>
+
+    <!-- GAME -->
+    <section id="screen-game" class="hidden">
+
+      <div class="game-topbar">
+        <button class="topbar-btn" id="btn-leave" aria-label="Leave game" title="Leave game">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+          Leave
+        </button>
+        <div class="room-pill">Code <b id="footer-code">——</b></div>
+        <button class="topbar-btn chat-trigger" id="chat-open-btn" type="button" aria-label="Open chat" title="Open chat">
+          💬
+          <span class="chat-badge hidden" id="chat-badge">0</span>
+        </button>
+      </div>
+
+      <div class="scoreboard">
+        <div class="player-chip" id="chip-x" style="--active-color:var(--coral); --active-bg:var(--coral-soft); --glow-color:rgba(255,79,160,.55);">
+          <div class="avatar-ring"><div class="avatar x" id="avatar-x">X</div></div>
+          <div class="player-name" id="name-x">Player 1</div>
+        </div>
+        <div class="vs-mid"><div class="vs-text">VS</div></div>
+        <div class="player-chip" id="chip-o" style="--active-color:var(--teal); --active-bg:var(--teal-soft); --glow-color:rgba(155,107,255,.5);">
+          <div class="avatar-ring"><div class="avatar o" id="avatar-o">O</div></div>
+          <div class="player-name" id="name-o">Player 2</div>
+        </div>
+      </div>
+
+      <div class="scorecard" id="scorecard" style="--x-share:50%;">
+        <div class="stat-pill">
+          <span class="stat-icon">🏆</span>
+          <span class="stat-num" id="score-x">0</span>
+          <span class="stat-label">wins</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-icon">🤝</span>
+          <span class="stat-num" id="score-draws">0</span>
+          <span class="stat-label">draws</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-icon">🏆</span>
+          <span class="stat-num" id="score-o">0</span>
+          <span class="stat-label">wins</span>
+        </div>
+      </div>
+
+      <div class="reaction-row" id="reaction-row">
+        <button type="button" class="reaction-chip" data-emoji="😏">😏</button>
+        <button type="button" class="reaction-chip" data-emoji="😂">😂</button>
+        <button type="button" class="reaction-chip" data-emoji="🔥">🔥</button>
+        <button type="button" class="reaction-chip" data-emoji="👀">👀</button>
+        <button type="button" class="reaction-chip" data-emoji="🙈">🙈</button>
+        <button type="button" class="reaction-chip" data-emoji="😤">😤</button>
+        <button type="button" class="reaction-chip" data-emoji="💅">💅</button>
+        <button type="button" class="reaction-chip" data-emoji="😱">😱</button>
+      </div>
+
+      <p class="turn-banner" id="turn-banner">&nbsp;</p>
+
+      <div id="result-banner"></div>
+
+      <div class="board-wrap">
+        <div class="board" id="board"></div>
+        <svg id="win-line-svg" class="win-line-svg" viewBox="0 0 3 3" preserveAspectRatio="none">
+          <line id="win-line" x1="0" y1="0" x2="0" y2="0" />
+        </svg>
+      </div>
+
+      <button class="btn btn-primary hidden btn-play-again" id="btn-play-again">Play again</button>
+
+    </section>
+
+  </div>
+</div>
+
+<!-- chat -->
+<div class="chat-drawer" id="chat-drawer">
+  <div class="chat-drawer-header">
+    <span>💬 Chat</span>
+    <button id="chat-close" aria-label="Close chat">✕</button>
+  </div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-empty">Say hi — messages show up instantly on both sides.</div>
+  </div>
+  <div class="emoji-hint">Tap an emoji to send it instantly ✨</div>
+  <div class="emoji-row" id="emoji-row">
+    <button type="button" class="emoji-chip">😀</button>
+    <button type="button" class="emoji-chip">😂</button>
+    <button type="button" class="emoji-chip">😍</button>
+    <button type="button" class="emoji-chip">🥳</button>
+    <button type="button" class="emoji-chip">😉</button>
+    <button type="button" class="emoji-chip">😮</button>
+    <button type="button" class="emoji-chip">😢</button>
+    <button type="button" class="emoji-chip">😤</button>
+    <button type="button" class="emoji-chip">🔥</button>
+    <button type="button" class="emoji-chip">👍</button>
+    <button type="button" class="emoji-chip">🎉</button>
+    <button type="button" class="emoji-chip">💖</button>
+    <button type="button" class="emoji-chip">✨</button>
+    <button type="button" class="emoji-chip">😅</button>
+  </div>
+  <form class="chat-form" id="chat-form">
+    <input type="text" id="chat-input" placeholder="Type a message…" maxlength="240" autocomplete="off" />
+    <button type="submit" class="chat-send" aria-label="Send">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
+    </button>
+  </form>
+</div>
+</div><!-- /.layout -->
+
+<div id="reaction-layer"></div>
+<div class="chat-backdrop hidden" id="chat-backdrop"></div>
+
+<div class="toast" id="toast"></div>
+<canvas id="confetti-layer"></canvas>
+
+<!-- Firebase (free Realtime Database — powers the live sync between devices) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
+
+<script>
+/* =========================================================================
+   FIREBASE CONFIG
+   ========================================================================= */
+const firebaseConfig = {
+  apiKey:            "AIzaSyCbN-MBJFpOoiz1DjoUpqqC9qqIpTKN068",
+  authDomain:         "bs-xo-d08c9.firebaseapp.com",
+  databaseURL:        "https://bs-xo-d08c9-default-rtdb.firebaseio.com",
+  projectId:          "bs-xo-d08c9",
+  storageBucket:      "bs-xo-d08c9.firebasestorage.app",
+  messagingSenderId:  "674669955461",
+  appId:              "1:674669955461:web:dd71b1893a11e85aa59cec"
+};
+/* ========================================================================= */
+
+let db = null;
+let configOk = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("PASTE_");
+if (configOk) {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+}
+
+/* ---------------------------- helpers ---------------------------- */
+const $ = (id) => document.getElementById(id);
+const screens = ["screen-start","screen-code","screen-waiting","screen-join","screen-note","screen-game"];
+function showScreen(id){
+  screens.forEach(s => {
+    const el = $(s);
+    const wasHidden = el.classList.contains("hidden");
+    el.classList.toggle("hidden", s !== id);
+    if (s === id && wasHidden){
+      el.classList.remove("fade-screen");
+      void el.offsetWidth;
+      el.classList.add("fade-screen");
+    }
+  });
+  $("brand").classList.toggle("hidden", id === "screen-game");
+  if (id !== "screen-game") closeChat();
+}
+function showToast(msg){
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(showToast._tm);
+  showToast._tm = setTimeout(() => t.classList.remove("show"), 1900);
+}
+function cleanName(v){
+  return (v || "").trim().replace(/\s+/g," ").slice(0,16);
+}
+function makeRoomCode(){
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no ambiguous 0/O/1/I
+  let out = "";
+  for (let i=0;i<6;i++) out += chars[Math.floor(Math.random()*chars.length)];
+  return out;
+}
+function roomUrl(code){
+  const base = location.origin + location.pathname;
+  return base + "?room=" + code;
+}
+function storageKey(code){ return "xo_room_" + code; }
+function escapeHtml(s){
+  return String(s || "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+
+/* ---------------------------- state ---------------------------- */
+let roomId = null;
+let mySymbol = null;   // "X" or "O"
+let myName = null;
+let roomRef = null;
+let listenerAttached = false;
+let lastBoardSnapshot = null;
+
+const WIN_LINES = [
+  [0,1,2],[3,4,5],[6,7,8],
+  [0,3,6],[1,4,7],[2,5,8],
+  [0,4,8],[2,4,6]
+];
+const CELL_POS = {0:[0,0],1:[1,0],2:[2,0],3:[0,1],4:[1,1],5:[2,1],6:[0,2],7:[1,2],8:[2,2]};
+
+function checkResult(board){
+  for (const line of WIN_LINES){
+    const [a,b,c] = line;
+    if (board[a] && board[a] === board[b] && board[a] === board[c]){
+      return { winner: board[a], line };
+    }
+  }
+  if (board.every(c => c)) return { winner: "draw", line: null };
+  return null;
+}
+
+/* ---------------------------- boot ---------------------------- */
+window.addEventListener("DOMContentLoaded", boot);
+
+function boot(){
+  buildBoardCells();
+  wireStaticEvents();
+  wireChatEvents();
+  wireReactionEvents();
+  wireCardTilt();
+
+  if (!configOk){
+    showNote("🔧", "This game isn't connected to a live server yet. Whoever set this page up needs to add their free Firebase details near the top of the page's code — see SETUP-INSTRUCTIONS.md.");
+    return;
+  }
+
+  const params = new URLSearchParams(location.search);
+  const code = (params.get("room") || "").toUpperCase().trim();
+
+  if (!code){
+    showScreen("screen-start");
+    return;
+  }
+
+  roomId = code;
+  resumeOrJoin(code);
+}
+
+/* ---------------------------- 3D tilt + sheen (pointer devices only) ---------------------------- */
+function wireCardTilt(){
+  const card = $("tiltCard");
+  if (!card) return;
+  const finePointer = window.matchMedia("(pointer: fine)").matches;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!finePointer || reduceMotion) return;
+
+  let raf = null;
+  card.addEventListener("mousemove", (e) => {
+    const rect = card.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width;
+    const py = (e.clientY - rect.top) / rect.height;
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      const rx = (0.5 - py) * 5;
+      const ry = (px - 0.5) * 5;
+      card.style.setProperty("--tiltX", rx.toFixed(2) + "deg");
+      card.style.setProperty("--tiltY", ry.toFixed(2) + "deg");
+      card.style.setProperty("--sheen-x", (px * 100).toFixed(1) + "%");
+      card.style.setProperty("--sheen-y", (py * 100).toFixed(1) + "%");
+      card.style.setProperty("--sheen-op", "1");
+    });
+  });
+  card.addEventListener("mouseleave", () => {
+    card.style.setProperty("--tiltX", "0deg");
+    card.style.setProperty("--tiltY", "0deg");
+    card.style.setProperty("--sheen-op", "0");
+  });
+}
+
+function showNote(emoji, text){
+  $("note-emoji").textContent = emoji;
+  $("note-text").textContent = text;
+  showScreen("screen-note");
+}
+
+/* ---------------------------- resume / join flow ---------------------------- */
+function resumeOrJoin(code){
+  roomRef = db.ref("rooms/" + code);
+  roomRef.once("value").then(snap => {
+    if (!snap.exists()){
+      showNote("🙈", "This game link doesn't lead anywhere — the game may have expired or the code is off. Start a fresh one below.");
+      return;
+    }
+    const data = snap.val();
+    const saved = JSON.parse(localStorage.getItem(storageKey(code)) || "null");
+
+    if (saved && saved.symbol && data["player" + saved.symbol] === saved.name){
+      mySymbol = saved.symbol;
+      myName = saved.name;
+      enterGame(code);
+      return;
+    }
+
+    if (!data.playerO){
+      $("join-sub").textContent = data.playerX
+        ? `${data.playerX} is waiting for you. Enter your name to jump in.`
+        : "Enter your name to jump in.";
+      showScreen("screen-join");
+      return;
+    }
+
+    showNote("👀", "This game already has two players in it. Start your own game instead?");
+  }).catch(() => {
+    showNote("🔌", "Couldn't reach the game server. Check your connection and try again.");
+  });
+}
+
+/* ---------------------------- static event wiring ---------------------------- */
+function wireStaticEvents(){
+  $("btn-create").addEventListener("click", onCreate);
+  $("input-name-1").addEventListener("keydown", e => { if (e.key === "Enter") onCreate(); });
+
+  $("btn-have-code").addEventListener("click", () => showScreen("screen-code"));
+  $("btn-back-start").addEventListener("click", () => showScreen("screen-start"));
+  $("btn-go-code").addEventListener("click", onGoCode);
+  $("input-code").addEventListener("keydown", e => { if (e.key === "Enter") onGoCode(); });
+
+  $("btn-copy-link").addEventListener("click", onCopyLink);
+  $("btn-cancel-wait").addEventListener("click", onCancelWait);
+
+  $("btn-join").addEventListener("click", onJoin);
+  $("input-name-2").addEventListener("keydown", e => { if (e.key === "Enter") onJoin(); });
+
+  $("btn-note-restart").addEventListener("click", () => {
+    history.replaceState({}, "", location.pathname);
+    location.reload();
+  });
+
+  $("btn-leave").addEventListener("click", onLeave);
+  $("btn-play-again").addEventListener("click", onPlayAgain);
+}
+
+function onCreate(){
+  const name = cleanName($("input-name-1").value);
+  $("error-start").textContent = "";
+  if (!name){ $("error-start").textContent = "Enter a name to continue."; return; }
+
+  const code = makeRoomCode();
+  const data = {
+    playerX: name,
+    playerO: null,
+    board: Array(9).fill(""),
+    turn: "X",
+    status: "waiting",
+    winner: null,
+    winLine: null,
+    scores: { X: 0, O: 0, draws: 0 },
+    startingSymbol: "X",
+    createdAt: Date.now()
+  };
+
+  db.ref("rooms/" + code).set(data).then(() => {
+    roomId = code;
+    mySymbol = "X";
+    myName = name;
+    localStorage.setItem(storageKey(code), JSON.stringify({ symbol:"X", name }));
+    history.replaceState({}, "", roomUrl(code));
+    roomRef = db.ref("rooms/" + code);
+    $("waiting-link-text").textContent = roomUrl(code).replace(/^https?:\/\//,"");
+    showScreen("screen-waiting");
+    attachWaitingListener();
+  }).catch(() => {
+    $("error-start").textContent = "Couldn't start a game right now. Please try again.";
+  });
+}
+
+function attachWaitingListener(){
+  roomRef.on("value", snap => {
+    const data = snap.val();
+    if (!data) return;
+    if (data.playerO && $("screen-waiting").classList.contains("hidden") === false){
+      roomRef.off("value");
+      enterGame(roomId);
+    }
+  });
+}
+
+function onCancelWait(){
+  roomRef && roomRef.off();
+  if (roomId) db.ref("rooms/" + roomId).remove();
+  localStorage.removeItem(storageKey(roomId));
+  history.replaceState({}, "", location.pathname);
+  location.reload();
+}
+
+/* ---------------------------- join with typed code ---------------------------- */
+function onGoCode(){
+  const code = cleanName($("input-code").value).toUpperCase().replace(/\s+/g,"");
+  $("error-code").textContent = "";
+  if (code.length !== 6){ $("error-code").textContent = "Codes are 6 characters long."; return; }
+  history.replaceState({}, "", roomUrl(code));
+  roomId = code;
+  resumeOrJoin(code);
+}
+
+/* ---------------------------- join as player 2 ---------------------------- */
+function onJoin(){
+  const name = cleanName($("input-name-2").value);
+  $("error-join").textContent = "";
+  if (!name){ $("error-join").textContent = "Enter a name to continue."; return; }
+
+  const ref = db.ref("rooms/" + roomId);
+  ref.transaction(data => {
+    if (!data) return data;
+    if (data.playerO) return;
+    data.playerO = name;
+    data.status = "playing";
+    return data;
+  }).then(result => {
+    if (!result.committed){
+      showNote("👀", "Someone just took that seat. Ask your friend for a fresh link.");
+      return;
+    }
+    mySymbol = "O";
+    myName = name;
+    localStorage.setItem(storageKey(roomId), JSON.stringify({ symbol:"O", name }));
+    enterGame(roomId);
+  }).catch(() => {
+    $("error-join").textContent = "Couldn't join right now. Please try again.";
+  });
+}
+
+/* ---------------------------- main game screen ---------------------------- */
+function enterGame(code){
+  roomId = code;
+  roomRef = db.ref("rooms/" + code);
+  $("footer-code").textContent = code;
+  showScreen("screen-game");
+  if (!listenerAttached){
+    roomRef.on("value", onRoomChange);
+    listenerAttached = true;
+  }
+  attachChat(code);
+  attachReactions(code);
+  if (isDesktopLayout()) openChat(false);
+}
+
+function onRoomChange(snap){
+  const data = snap.val();
+  if (!data) return;
+
+  $("name-x").textContent = data.playerX || "Player 1";
+  $("name-o").textContent = data.playerO || "Player 2";
+  $("avatar-x").textContent = (data.playerX || "P1").trim()[0].toUpperCase();
+  $("avatar-o").textContent = (data.playerO || "P2").trim()[0].toUpperCase();
+
+  updateScoreNumber("score-x", data.scores?.X ?? 0);
+  updateScoreNumber("score-o", data.scores?.O ?? 0);
+  updateScoreNumber("score-draws", data.scores?.draws ?? 0);
+
+  const totalWins = (data.scores?.X ?? 0) + (data.scores?.O ?? 0);
+  const xShare = totalWins ? Math.round(((data.scores?.X ?? 0) / totalWins) * 100) : 50;
+  $("scorecard").style.setProperty("--x-share", xShare + "%");
+
+  $("chip-x").classList.toggle("turn", data.status === "playing" && data.turn === "X");
+  $("chip-o").classList.toggle("turn", data.status === "playing" && data.turn === "O");
+  $("chip-x").classList.toggle("my-turn", data.status === "playing" && data.turn === "X" && mySymbol === "X");
+  $("chip-o").classList.toggle("my-turn", data.status === "playing" && data.turn === "O" && mySymbol === "O");
+
+  renderBoard(data.board || Array(9).fill(""), data);
+  renderTurnBanner(data);
+  renderResult(data);
+
+  lastBoardSnapshot = (data.board || []).slice();
+}
+
+function updateScoreNumber(id, value){
+  const el = $(id);
+  const current = Number(el.textContent);
+  if (current !== value){
+    el.textContent = value;
+    el.classList.remove("bump");
+    void el.offsetWidth;
+    el.classList.add("bump");
+  }
+}
+
+function buildBoardCells(){
+  const board = $("board");
+  board.innerHTML = "";
+  for (let i=0;i<9;i++){
+    const btn = document.createElement("button");
+    btn.className = "cell";
+    btn.setAttribute("data-index", i);
+    btn.setAttribute("aria-label", "Cell " + (i+1));
+    btn.addEventListener("click", () => onCellClick(i));
+    board.appendChild(btn);
+  }
+}
+
+function markSvg(symbol){
+  if (symbol === "X"){
+    return `<svg class="mark-x draw-in" viewBox="0 0 100 100">
+      <path class="line1" d="M22 22 L78 78"/>
+      <path class="line2" d="M78 22 L22 78"/>
+    </svg>`;
+  }
+  return `<svg class="mark-o draw-in" viewBox="0 0 100 100">
+    <circle class="o-mark" cx="50" cy="50" r="32"/>
+  </svg>`;
+}
+
+function renderBoard(board, data){
+  const cells = document.querySelectorAll(".cell");
+  const canPlay = data.status === "playing" && data.turn === mySymbol;
+  const winLine = data.winLine || [];
+
+  cells.forEach((cell, i) => {
+    const val = board[i];
+    const wasEmpty = lastBoardSnapshot ? !lastBoardSnapshot[i] : false;
+
+    if (val && cell.dataset.rendered !== val){
+      cell.innerHTML = markSvg(val);
+      cell.dataset.rendered = val;
+      if (wasEmpty){
+        cell.classList.add("just-placed");
+        setTimeout(() => cell.classList.remove("just-placed"), 260);
+      }
+    } else if (!val){
+      cell.innerHTML = "";
+      cell.dataset.rendered = "";
+    }
+
+    cell.disabled = !!val || !canPlay;
+    cell.classList.toggle("playable", !val && canPlay);
+    cell.classList.toggle("win-cell", winLine.includes(i));
+  });
+
+  drawWinLine(data.status === "finished" ? data.winLine : null, data.winner);
+}
+
+let lastLineSignature = null;
+function drawWinLine(line, winner){
+  const svg = $("win-line-svg");
+  const lineEl = $("win-line");
+  if (!line || !winner || winner === "draw"){
+    svg.classList.remove("show");
+    lineEl.style.strokeDashoffset = "4.3";
+    lastLineSignature = null;
+    return;
+  }
+  const sig = line.join(",");
+  const [r1, c1] = CELL_POS[line[0]];
+  const [r2, c2] = CELL_POS[line[2]];
+  lineEl.setAttribute("x1", c1 + 0.5);
+  lineEl.setAttribute("y1", r1 + 0.5);
+  lineEl.setAttribute("x2", c2 + 0.5);
+  lineEl.setAttribute("y2", r2 + 0.5);
+  lineEl.style.stroke = winner === "X" ? "var(--coral)" : "var(--teal)";
+  svg.classList.add("show");
+
+  if (sig !== lastLineSignature){
+    lineEl.style.transition = "none";
+    lineEl.style.strokeDashoffset = "4.3";
+    void lineEl.getBoundingClientRect();
+    lineEl.style.transition = "";
+    requestAnimationFrame(() => { lineEl.style.strokeDashoffset = "0"; });
+    lastLineSignature = sig;
+  }
+}
+
+function renderTurnBanner(data){
+  const el = $("turn-banner");
+  if (data.status === "waiting"){
+    el.innerHTML = "Waiting for player 2 to join…";
+    return;
+  }
+  if (data.status === "finished"){
+    el.innerHTML = "&nbsp;";
+    return;
+  }
+  const turnName = data.turn === "X" ? data.playerX : data.playerO;
+  if (data.turn === mySymbol){
+    el.innerHTML = `<b>Your turn</b> — go ahead, ${escapeHtml(myName)}`;
+  } else {
+    el.innerHTML = `Waiting on <b>${escapeHtml(turnName || "…")}</b>`;
+  }
+}
+
+let lastResultSignature = null;
+function renderResult(data){
+  const box = $("result-banner");
+  const playAgainBtn = $("btn-play-again");
+
+  if (data.status !== "finished" || !data.winner){
+    box.innerHTML = "";
+    playAgainBtn.classList.add("hidden");
+    lastResultSignature = null;
+    return;
+  }
+
+  const signature = data.winner + "|" + (data.winLine || []).join(",");
+  const isNew = signature !== lastResultSignature;
+  lastResultSignature = signature;
+
+  playAgainBtn.classList.remove("hidden");
+
+  if (data.winner === "draw"){
+    box.innerHTML = `
+      <div class="result">
+        <div class="result-emoji">🤝</div>
+        <div class="result-text">It's a draw! <small>Nobody blinked first — go again?</small></div>
+      </div>`;
+    return;
+  }
+
+  const winnerName = data.winner === "X" ? data.playerX : data.playerO;
+  box.innerHTML = `
+    <div class="result">
+      <div class="result-emoji">💖🎉</div>
+      <div class="result-text">${escapeHtml(winnerName)} wins! <small>${data.winner === mySymbol ? "Nice one." : "Better luck this round."}</small></div>
+    </div>`;
+
+  if (isNew && data.winner === mySymbol){
+    launchConfetti();
+  } else if (isNew){
+    launchConfetti(true);
+  }
+}
+
+/* ---------------------------- gameplay ---------------------------- */
+function onCellClick(index){
+  if (!roomId || !mySymbol) return;
+
+  db.ref("rooms/" + roomId).transaction(data => {
+    if (!data) return data;
+    if (data.status !== "playing") return data;
+    if (data.turn !== mySymbol) return data;
+    if (data.board[index]) return data;
+
+    data.board[index] = mySymbol;
+
+    const result = checkResult(data.board);
+    if (result){
+      data.status = "finished";
+      data.winner = result.winner;
+      data.winLine = result.line;
+      if (result.winner === "draw"){
+        data.scores.draws = (data.scores.draws || 0) + 1;
+      } else {
+        data.scores[result.winner] = (data.scores[result.winner] || 0) + 1;
+      }
+    } else {
+      data.turn = mySymbol === "X" ? "O" : "X";
+    }
+    return data;
+  });
+}
+
+function onPlayAgain(){
+  if (!roomId) return;
+  db.ref("rooms/" + roomId).transaction(data => {
+    if (!data) return data;
+    const nextStart = data.startingSymbol === "X" ? "O" : "X";
+    data.board = Array(9).fill("");
+    data.status = "playing";
+    data.winner = null;
+    data.winLine = null;
+    data.turn = nextStart;
+    data.startingSymbol = nextStart;
+    return data;
+  });
+}
+
+function onLeave(){
+  roomRef && roomRef.off();
+  listenerAttached = false;
+  if (chatRef) chatRef.off();
+  if (reactionRef) reactionRef.off();
+  localStorage.removeItem(storageKey(roomId));
+  history.replaceState({}, "", location.pathname);
+  location.reload();
+}
+
+/* ---------------------------- copy link ---------------------------- */
+function onCopyLink(){
+  const url = roomUrl(roomId);
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(() => showToast("Link copied!"))
+      .catch(() => fallbackCopy(url));
+  } else {
+    fallbackCopy(url);
+  }
+}
+function fallbackCopy(text){
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); showToast("Link copied!"); }
+  catch(e){ showToast("Copy this: " + text); }
+  document.body.removeChild(ta);
+}
+
+/* ---------------------------- live chat ---------------------------- */
+let chatRef = null;
+let chatOpen = false;
+let unreadCount = 0;
+let chatReadyAt = 0;
+
+function wireChatEvents(){
+  $("chat-open-btn").addEventListener("click", openChat);
+  $("chat-close").addEventListener("click", closeChat);
+  $("chat-backdrop").addEventListener("click", closeChat);
+  $("chat-form").addEventListener("submit", onSendChat);
+  $("emoji-row").addEventListener("click", onEmojiPick);
+}
+
+const isDesktopLayout = () => window.matchMedia("(min-width: 900px)").matches;
+
+function onEmojiPick(e){
+  const btn = e.target.closest(".emoji-chip");
+  if (!btn || !roomId || !mySymbol) return;
+  btn.classList.remove("pop");
+  void btn.offsetWidth;
+  btn.classList.add("pop");
+  sendChatMessage(btn.textContent, true);
+}
+
+function attachChat(code){
+  if (chatRef) chatRef.off();
+  $("chat-messages").innerHTML = '<div class="chat-empty">Say hi — messages show up instantly on both sides.</div>';
+  unreadCount = 0;
+  updateChatBadge();
+  chatReadyAt = Date.now() - 4000; // small buffer so recent history still renders without flagging unread
+  chatRef = db.ref("rooms/" + code + "/chat").limitToLast(50);
+  let first = true;
+  chatRef.on("child_added", snap => {
+    const msg = snap.val();
+    appendChatMessage(msg);
+    if (!first && msg.ts > chatReadyAt && msg.symbol !== mySymbol && !chatOpen){
+      unreadCount++;
+      updateChatBadge();
+    }
+  });
+  chatRef.once("value").then(() => { first = false; });
+}
+
+function appendChatMessage(msg){
+  const wrap = $("chat-messages");
+  const empty = wrap.querySelector(".chat-empty");
+  if (empty) empty.remove();
+
+  const isMine = msg.symbol === mySymbol;
+  const row = document.createElement("div");
+  row.className = "chat-row " + msg.symbol.toLowerCase() + (isMine ? " mine" : "");
+  const bubbleClass = "chat-bubble" + (msg.emojiOnly ? " emoji-msg" : "");
+  row.innerHTML = `<div class="${bubbleClass}">${!isMine ? `<span class="chat-sender">${escapeHtml(msg.name)}</span>` : ""}${escapeHtml(msg.text)}</div>`;
+  wrap.appendChild(row);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function sendChatMessage(text, emojiOnly){
+  const clean = cleanChatText(text);
+  if (!clean || !roomId || !mySymbol) return;
+  db.ref("rooms/" + roomId + "/chat").push({
+    symbol: mySymbol,
+    name: myName,
+    text: clean,
+    ts: Date.now(),
+    emojiOnly: !!emojiOnly
+  });
+}
+
+function onSendChat(e){
+  e.preventDefault();
+  const input = $("chat-input");
+  sendChatMessage(input.value, false);
+  input.value = "";
+  input.focus();
+}
+function cleanChatText(v){
+  return (v || "").trim().slice(0,240);
+}
+
+function openChat(autoFocus){
+  chatOpen = true;
+  unreadCount = 0;
+  updateChatBadge();
+  $("chat-drawer").classList.add("open");
+  if (!isDesktopLayout()) $("chat-backdrop").classList.remove("hidden");
+  if (autoFocus !== false) setTimeout(() => $("chat-input").focus(), 220);
+  const wrap = $("chat-messages");
+  wrap.scrollTop = wrap.scrollHeight;
+}
+function closeChat(){
+  chatOpen = false;
+  $("chat-drawer").classList.remove("open");
+  $("chat-backdrop").classList.add("hidden");
+}
+function updateChatBadge(){
+  const badge = $("chat-badge");
+  if (unreadCount > 0){
+    badge.textContent = unreadCount > 9 ? "9+" : unreadCount;
+    badge.classList.remove("hidden");
+  } else {
+    badge.classList.add("hidden");
+  }
+}
+
+/* ---------------------------- quick reactions (one-tap, flies across screen) ---------------------------- */
+let reactionRef = null;
+let reactionsStartedAt = 0;
+
+function wireReactionEvents(){
+  $("reaction-row").addEventListener("click", onReactionTap);
+}
+
+function onReactionTap(e){
+  const btn = e.target.closest(".reaction-chip");
+  if (!btn || !roomId || !mySymbol) return;
+  const emoji = btn.getAttribute("data-emoji");
+  db.ref("rooms/" + roomId + "/reactions").push({
+    symbol: mySymbol,
+    emoji,
+    ts: Date.now()
+  });
+}
+
+function attachReactions(code){
+  if (reactionRef) reactionRef.off();
+  reactionsStartedAt = Date.now();
+  reactionRef = db.ref("rooms/" + code + "/reactions").limitToLast(1);
+  reactionRef.on("child_added", snap => {
+    const r = snap.val();
+    if (!r || r.ts < reactionsStartedAt - 500) return; // ignore stale ones from before we attached
+    spawnFlyingEmoji(r.emoji);
+    // whoever sent it cleans it up shortly after, so the node doesn't pile up
+    if (r.symbol === mySymbol){
+      setTimeout(() => snap.ref.remove().catch(() => {}), 1800);
+    }
+  });
+}
+
+function spawnFlyingEmoji(emoji){
+  const layer = $("reaction-layer");
+  const span = document.createElement("span");
+  span.className = "flying-emoji";
+  span.textContent = emoji;
+  const leftPct = 20 + Math.random() * 60;
+  const drift = (Math.random() * 60 - 30) + "px";
+  span.style.left = leftPct + "%";
+  span.style.setProperty("--drift", drift);
+  layer.appendChild(span);
+  setTimeout(() => span.remove(), 1700);
+}
+
+/* ---------------------------- confetti (one orchestrated burst) ---------------------------- */
+function launchConfetti(subtle){
+  const canvas = $("confetti-layer");
+  const ctx = canvas.getContext("2d");
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = innerWidth * dpr;
+  canvas.height = innerHeight * dpr;
+  canvas.style.width = innerWidth + "px";
+  canvas.style.height = innerHeight + "px";
+  ctx.scale(dpr, dpr);
+
+  const colors = ["#FF4FA0","#FFC857","#9B6BFF","#FF8AC4","#C3A6FF","#FFFFFF"];
+  const count = subtle ? 40 : 90;
+  const parts = Array.from({length:count}, () => ({
+    x: innerWidth/2 + (Math.random()-0.5)*80,
+    y: innerHeight*0.35,
+    vx: (Math.random()-0.5) * (subtle ? 4 : 8),
+    vy: -(Math.random()*6 + 4),
+    size: Math.random()*6 + 4,
+    color: colors[Math.floor(Math.random()*colors.length)],
+    rot: Math.random()*Math.PI,
+    vr: (Math.random()-0.5)*0.3,
+    life: 0
+  }));
+
+  const gravity = 0.22;
+  let frame = 0;
+  const maxFrames = 130;
+
+  function tick(){
+    frame++;
+    ctx.clearRect(0,0,innerWidth,innerHeight);
+    parts.forEach(p => {
+      p.vy += gravity;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rot += p.vr;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, 1 - frame/maxFrames);
+      ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size*0.6);
+      ctx.restore();
+    });
+    if (frame < maxFrames){
+      requestAnimationFrame(tick);
+    } else {
+      ctx.clearRect(0,0,innerWidth,innerHeight);
+    }
+  }
+  if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+    requestAnimationFrame(tick);
+  }
+}
+</script>
+</body>
+</html>
